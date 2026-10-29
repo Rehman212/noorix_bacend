@@ -6,7 +6,14 @@ let cachedApp: Express | null = null;
 async function getApp(): Promise<Express> {
   if (cachedApp) return cachedApp;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('../dist/server');
+  let mod: { createExpressApp: () => Promise<Express> };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mod = require('../dist/server');
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mod = require('../dist/src/server');
+  }
   cachedApp = await mod.createExpressApp();
   return cachedApp!;
 }

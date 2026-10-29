@@ -12,7 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "vercel-build": "prisma generate && nest build",
+    "vercel-build": "prisma generate && nest build && node -e \"const fs=require('fs'); const a='dist/server.js'; const b='dist/src/server.js'; if(!fs.existsSync(a)&&!fs.existsSync(b)){console.error('Nest build missing server.js'); process.exit(1)} console.log('server entry:', fs.existsSync(a)?a:b)\"",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
