@@ -22,6 +22,7 @@ enum Plan {
 enum TopupStatus {
   PENDING
   ADDED
+  REJECTED
 }
 
 enum BookingStatus {

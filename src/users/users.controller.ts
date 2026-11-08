@@ -104,6 +104,10 @@ export class UsersController {
       return { ...this.auth.publicUser(user), topups: user.topups };
     }
 
+    if (existing.status !== TopupStatus.PENDING) {
+      throw new NotFoundException('Only pending top-ups can be approved');
+    }
+
     const [, user] = await this.prisma.$transaction([
       this.prisma.topup.update({
         where: { id: topupId },
@@ -115,6 +119,33 @@ export class UsersController {
         include: { topups: { orderBy: { createdAt: 'desc' } } },
       }),
     ]);
+
+    return {
+      ...this.auth.publicUser(user),
+      topups: user.topups,
+    };
+  }
+
+  @Post('topups/:topupId/reject')
+  async rejectTopup(@Param('topupId') topupId: string) {
+    const existing = await this.prisma.topup.findUnique({ where: { id: topupId } });
+    if (!existing) throw new NotFoundException('Top-up not found');
+    if (existing.status !== TopupStatus.PENDING) {
+      throw new NotFoundException('Only pending top-ups can be rejected');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: existing.userId },
+      data: {
+        topups: {
+          update: {
+            where: { id: topupId },
+            data: { status: TopupStatus.REJECTED },
+          },
+        },
+      },
+      include: { topups: { orderBy: { createdAt: 'desc' } } },
+    });
 
     return {
       ...this.auth.publicUser(user),
