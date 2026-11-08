@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -89,6 +90,38 @@ export class UsersController {
     return this.auth.publicUser(user);
   }
 
+  @Post('topups/:topupId/approve')
+  async approveTopup(@Param('topupId') topupId: string) {
+    const existing = await this.prisma.topup.findUnique({ where: { id: topupId } });
+    if (!existing) throw new NotFoundException('Top-up not found');
+
+    if (existing.status === TopupStatus.ADDED) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: existing.userId },
+        include: { topups: { orderBy: { createdAt: 'desc' } } },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      return { ...this.auth.publicUser(user), topups: user.topups };
+    }
+
+    const [, user] = await this.prisma.$transaction([
+      this.prisma.topup.update({
+        where: { id: topupId },
+        data: { status: TopupStatus.ADDED },
+      }),
+      this.prisma.user.update({
+        where: { id: existing.userId },
+        data: { wallet: { increment: existing.amount } },
+        include: { topups: { orderBy: { createdAt: 'desc' } } },
+      }),
+    ]);
+
+    return {
+      ...this.auth.publicUser(user),
+      topups: user.topups,
+    };
+  }
+
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     const user = await this.prisma.user.update({
@@ -124,8 +157,12 @@ export class UsersController {
           },
         },
       },
+      include: { topups: { orderBy: { createdAt: 'desc' } } },
     });
-    return this.auth.publicUser(user);
+    return {
+      ...this.auth.publicUser(user),
+      topups: user.topups,
+    };
   }
 
   @Post(':id/wallet-reset')
@@ -133,7 +170,11 @@ export class UsersController {
     const user = await this.prisma.user.update({
       where: { id },
       data: { wallet: 0 },
+      include: { topups: { orderBy: { createdAt: 'desc' } } },
     });
-    return this.auth.publicUser(user);
+    return {
+      ...this.auth.publicUser(user),
+      topups: user.topups,
+    };
   }
 }

@@ -57,9 +57,36 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { topups: { orderBy: { createdAt: 'desc' } } },
+    });
     if (!user) throw new UnauthorizedException();
-    return this.publicUser(user);
+    return {
+      ...this.publicUser(user),
+      topups: user.topups,
+    };
+  }
+
+  async requestTopup(userId: string, amount: number) {
+    const topup = await this.prisma.topup.create({
+      data: {
+        userId,
+        amount,
+        method: 'Bank Alfalah QR',
+        status: 'PENDING',
+      },
+    });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { topups: { orderBy: { createdAt: 'desc' } } },
+    });
+    if (!user) throw new UnauthorizedException();
+    return {
+      ...this.publicUser(user),
+      topups: user.topups,
+      request: topup,
+    };
   }
 
   session(user: {
