@@ -82,14 +82,20 @@ model Booking {
   createdAt DateTime      @default(now())
 }
 
+enum ProductCondition {
+  NEW
+  OLD
+}
+
 model Product {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   name        String
-  description String   @default("")
+  description String           @default("")
   price       Int
-  imageUrl    String   @default("")
-  images      String[] @default([])
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  imageUrl    String           @default("")
+  images      String[]         @default([])
+  condition   ProductCondition @default(NEW)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

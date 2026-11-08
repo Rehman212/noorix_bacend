@@ -10,10 +10,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Role } from '@prisma/client';
+import { ProductCondition, Role } from '@prisma/client';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -46,6 +47,10 @@ class ProductDto {
   images?: string[];
 
   @IsOptional()
+  @IsEnum(ProductCondition)
+  condition?: ProductCondition;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 }
@@ -73,6 +78,10 @@ class UpdateProductDto {
   @IsArray()
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional()
+  @IsEnum(ProductCondition)
+  condition?: ProductCondition;
 
   @IsOptional()
   @IsBoolean()
@@ -121,6 +130,7 @@ export class ProductsController {
         price: dto.price,
         imageUrl: media.imageUrl,
         images: media.images,
+        condition: dto.condition ?? ProductCondition.NEW,
         active: dto.active ?? true,
       },
     });
@@ -147,6 +157,7 @@ export class ProductsController {
                 images: media.images,
               }
             : {}),
+          ...(dto.condition ? { condition: dto.condition } : {}),
           ...(dto.active !== undefined ? { active: dto.active } : {}),
         },
       });
