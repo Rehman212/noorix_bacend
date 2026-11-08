@@ -11,7 +11,15 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Role } from '@prisma/client';
-import { IsBoolean, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { Roles, RolesGuard } from '../auth/roles.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -31,6 +39,11 @@ class ProductDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @IsOptional()
   @IsBoolean()
@@ -57,8 +70,24 @@ class UpdateProductDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
+}
+
+function cleanImages(images?: string[], imageUrl?: string) {
+  const fromList = (images ?? []).map((item) => item.trim()).filter(Boolean);
+  const cover = imageUrl?.trim() || '';
+  const merged = [...fromList];
+  if (cover && !merged.includes(cover)) merged.unshift(cover);
+  return {
+    images: merged,
+    imageUrl: merged[0] || cover || '',
+  };
 }
 
 @Controller('products')
@@ -84,12 +113,14 @@ export class ProductsController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   create(@Body() dto: ProductDto) {
+    const media = cleanImages(dto.images, dto.imageUrl);
     return this.prisma.product.create({
       data: {
         name: dto.name.trim(),
         description: dto.description?.trim() || '',
         price: dto.price,
-        imageUrl: dto.imageUrl?.trim() || '',
+        imageUrl: media.imageUrl,
+        images: media.images,
         active: dto.active ?? true,
       },
     });
@@ -100,13 +131,22 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   async update(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     try {
+      const media =
+        dto.images !== undefined || dto.imageUrl !== undefined
+          ? cleanImages(dto.images, dto.imageUrl)
+          : null;
       return await this.prisma.product.update({
         where: { id },
         data: {
           ...(dto.name ? { name: dto.name.trim() } : {}),
           ...(dto.description !== undefined ? { description: dto.description.trim() } : {}),
           ...(dto.price !== undefined ? { price: dto.price } : {}),
-          ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl.trim() } : {}),
+          ...(media
+            ? {
+                imageUrl: media.imageUrl,
+                images: media.images,
+              }
+            : {}),
           ...(dto.active !== undefined ? { active: dto.active } : {}),
         },
       });
