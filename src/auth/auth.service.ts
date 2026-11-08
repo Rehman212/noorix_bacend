@@ -60,20 +60,24 @@ export class AuthService {
 
   async ensureAdminAccount() {
     const email = (process.env.ADMIN_EMAIL || 'admin@noorix.best').trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      if (existing.role !== Role.ADMIN) {
+        return this.prisma.user.update({
+          where: { email },
+          data: { role: Role.ADMIN, name: existing.name || 'NOORIX Admin' },
+        });
+      }
+      return existing;
+    }
+
     const password = process.env.ADMIN_PASSWORD || '786786';
-    const passwordHash = await bcrypt.hash(password, 10);
-    return this.prisma.user.upsert({
-      where: { email },
-      update: {
-        passwordHash,
-        role: Role.ADMIN,
-        name: 'NOORIX Admin',
-      },
-      create: {
+    return this.prisma.user.create({
+      data: {
         name: 'NOORIX Admin',
         email,
         phone: '03104656107',
-        passwordHash,
+        passwordHash: await bcrypt.hash(password, 10),
         role: Role.ADMIN,
         plan: Plan.GOLDEN,
       },
