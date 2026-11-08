@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import express, { Express } from 'express';
 import { AppModule } from './app.module';
+import { AuthService } from './auth/auth.service';
 
 let cachedExpressApp: Express | null = null;
 
@@ -59,6 +60,11 @@ export async function createExpressApp(): Promise<Express> {
   });
 
   await app.init();
+  try {
+    await app.get(AuthService).ensureAdminAccount();
+  } catch (error) {
+    console.warn('Admin account ensure skipped:', error);
+  }
   cachedExpressApp = server;
   return server;
 }

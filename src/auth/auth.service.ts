@@ -47,13 +47,37 @@ export class AuthService {
   }
 
   async adminLogin(dto: AdminLoginDto) {
-    const password = process.env.ADMIN_PASSWORD || '786786786';
-    if (dto.password !== password) {
-      throw new UnauthorizedException('Admin password is incorrect.');
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user || user.role !== Role.ADMIN) {
+      throw new UnauthorizedException('Admin email or password is incorrect.');
     }
-    const user = await this.prisma.user.findFirst({ where: { role: Role.ADMIN } });
-    if (!user) throw new UnauthorizedException('Admin account is missing.');
+    if (!(await bcrypt.compare(dto.password, user.passwordHash))) {
+      throw new UnauthorizedException('Admin email or password is incorrect.');
+    }
     return this.session(user);
+  }
+
+  async ensureAdminAccount() {
+    const email = (process.env.ADMIN_EMAIL || 'admin@noorix.best').trim().toLowerCase();
+    const password = process.env.ADMIN_PASSWORD || '786786';
+    const passwordHash = await bcrypt.hash(password, 10);
+    return this.prisma.user.upsert({
+      where: { email },
+      update: {
+        passwordHash,
+        role: Role.ADMIN,
+        name: 'NOORIX Admin',
+      },
+      create: {
+        name: 'NOORIX Admin',
+        email,
+        phone: '03104656107',
+        passwordHash,
+        role: Role.ADMIN,
+        plan: Plan.GOLDEN,
+      },
+    });
   }
 
   async me(userId: string) {

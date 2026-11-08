@@ -5,15 +5,16 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const password = process.env.ADMIN_PASSWORD || '786786786';
+  const email = (process.env.ADMIN_EMAIL || 'admin@noorix.best').trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || '786786';
   const passwordHash = await bcrypt.hash(password, 10);
 
   await prisma.user.upsert({
-    where: { email: 'admin@noorix.pk' },
+    where: { email },
     update: { passwordHash, role: Role.ADMIN, name: 'NOORIX Admin' },
     create: {
       name: 'NOORIX Admin',
-      email: 'admin@noorix.pk',
+      email,
       phone: '03104656107',
       passwordHash,
       role: Role.ADMIN,
@@ -21,7 +22,16 @@ async function main() {
     },
   });
 
-  console.log('Admin ready:  admin@noorix.pk');
+  // Keep legacy admin usable if it still exists.
+  const legacy = await prisma.user.findUnique({ where: { email: 'admin@noorix.pk' } });
+  if (legacy && legacy.email !== email) {
+    await prisma.user.update({
+      where: { email: 'admin@noorix.pk' },
+      data: { passwordHash, role: Role.ADMIN },
+    });
+  }
+
+  console.log(`Admin ready: ${email} / ${password}`);
 }
 
 main()

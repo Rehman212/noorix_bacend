@@ -22,12 +22,15 @@ export class LoginDto {
   email: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password: string;
 }
 
 export class AdminLoginDto {
+  @IsEmail()
+  email: string;
+
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
   password: string;
 }
